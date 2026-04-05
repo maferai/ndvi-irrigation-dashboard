@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AguaClara — Monitoreo Satelital de Cultivos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green-50:#f0faf0;--green-100:#dcf2dc;--green-200:#bbe5bb;--green-300:#8dd08d;
+  --green-500:#3d9b3d;--green-600:#2d7d2d;--green-700:#256325;--green-800:#1c421c;
+  --amber-50:#fffbeb;--amber-100:#fef3c7;--amber-500:#f59e0b;--amber-700:#b45309;
+  --red-50:#fef2f2;--red-100:#fee2e2;--red-500:#ef4444;--red-700:#b91c1c;
+  --blue-50:#eff8ff;--blue-500:#3b82f6;--blue-700:#1d4ed8;
+  --earth-400:#c4872a;--earth-50:#fdf8f0;--earth-100:#f8edda;
+  --bg:#f0faf0;--card:#fff;--text:#1c421c;--muted:#5a8a5a;--border:#d4e8d4;
+  --font-display:'Playfair Display',Georgia,serif;
+  --font-body:'Outfit',system-ui,sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
+  --radius:14px;--radius-sm:8px;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#0d1f0d;--card:#142414;--text:#d4f0d4;--muted:#6aaa6a;--border:#253525;
+    --green-50:#0d200d;--green-100:#162816;--green-200:#1e381e;
+    --amber-50:#1a1200;--amber-100:#2a1f00;
+    --red-50:#1a0a0a;--red-100:#2a1010;
+    --blue-50:#050e1a;--earth-50:#1a1205;--earth-100:#2a1e0a;
+  }
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+
+/* Header */
+header{background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;backdrop-filter:blur(8px)}
+.header-inner{max-width:1280px;margin:0 auto;padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.logo-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--green-700),var(--green-500));display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo-icon svg{width:20px;height:20px}
+.logo-text h1{font-family:var(--font-display);font-size:18px;font-weight:700;color:var(--text);line-height:1}
+.logo-text p{font-size:11px;color:var(--muted);line-height:1;margin-top:2px}
+.header-right{display:flex;align-items:center;gap:12px}
+.status-pill{display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--green-50);border:1px solid var(--green-200);border-radius:20px;font-size:12px;color:var(--green-600);font-weight:500}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--green-500);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.btn-refresh{display:flex;align-items:center;gap:6px;padding:8px 16px;background:var(--green-600);color:#fff;border:none;border-radius:var(--radius-sm);font-family:var(--font-body);font-size:13px;font-weight:500;cursor:pointer;transition:background 0.2s,transform 0.1s}
+.btn-refresh:hover{background:var(--green-700)}
+.btn-refresh:active{transform:scale(0.97)}
+.btn-refresh svg{width:14px;height:14px}
+.spinning{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Layout */
+main{max-width:1280px;margin:0 auto;padding:32px 24px;display:flex;flex-direction:column;gap:24px}
+.section-label{font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.section-title{font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--text)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;transition:box-shadow 0.2s}
+
+/* Hero */
+.hero{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.hero h1{font-family:var(--font-display);font-size:36px;font-weight:700;color:var(--text);line-height:1.1}
+.hero p{font-size:15px;color:var(--muted);margin-top:4px}
+.season-badge{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);flex-shrink:0}
+.season-badge .icon{font-size:20px}
+.season-badge .label{font-size:11px;color:var(--muted);line-height:1}
+.season-badge .value{font-size:13px;font-weight:500;color:var(--text);line-height:1;margin-top:2px}
+
+/* Field Selector */
+.fields-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:16px}
+.field-btn{text-align:left;padding:16px;background:var(--card);border:2px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color 0.2s,background 0.2s;font-family:var(--font-body);position:relative}
+.field-btn:hover{border-color:var(--green-300)}
+.field-btn.active{border-color:var(--green-500);background:var(--green-50)}
+.field-btn .crop-icon{font-size:22px;display:block;margin-bottom:8px}
+.field-btn .field-name{font-size:14px;font-weight:600;color:var(--text);display:block}
+.field-btn .field-loc{font-size:12px;color:var(--muted);display:block;margin-top:2px}
+.field-btn .field-tags{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.tag{font-size:11px;padding:2px 8px;border-radius:20px;background:var(--green-100);color:var(--green-700);font-weight:500;border:1px solid var(--green-200)}
+.field-check{position:absolute;top:12px;right:12px;width:18px;height:18px;border-radius:50%;background:var(--green-500);display:none;align-items:center;justify-content:center}
+.field-btn.active .field-check{display:flex}
+.field-check svg{width:10px;height:10px}
+
+/* Main Grid */
+.main-grid{display:grid;grid-template-columns:1fr 2fr;gap:24px;align-items:start}
+@media(max-width:900px){.main-grid{grid-template-columns:1fr}}
+
+/* Status Card */
+.status-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px}
+.status-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px}
+.classification-row{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+.class-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.class-badge{display:inline-flex;align-items:center;padding:6px 14px;border-radius:20px;font-size:13px;font-weight:600;border:1px solid}
+.confidence{font-size:12px;color:var(--muted);margin-left:auto}
+
+/* NDVI Bar */
+.ndvi-bar-wrap{margin-bottom:20px}
+.ndvi-bar-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-bottom:4px}
+.ndvi-bar-labels .center{font-weight:500;color:var(--text)}
+.ndvi-track{height:10px;background:var(--green-100);border-radius:5px;overflow:visible;position:relative;margin-bottom:4px}
+.ndvi-fill{height:100%;border-radius:5px;transition:width 0.8s cubic-bezier(.4,0,.2,1)}
+.ndvi-markers{position:relative;height:8px}
+.ndvi-marker{position:absolute;top:0;width:1px;height:8px;background:var(--border)}
+
+/* Value Chips */
+.value-chips{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+.chip{background:var(--green-50);border:1px solid var(--green-100);border-radius:var(--radius-sm);padding:10px 12px}
+.chip .chip-label{font-size:11px;color:var(--muted);margin-bottom:2px}
+.chip .chip-val{font-family:var(--font-mono);font-size:18px;font-weight:500}
+
+/* Recommendation */
+.rec-box{background:var(--green-50);border:1px solid var(--green-100);border-radius:var(--radius-sm);padding:14px}
+.rec-label{font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.rec-text{font-size:13px;color:var(--text);line-height:1.6}
+.obs-date{font-size:11px;color:var(--muted);text-align:right;margin-top:12px;font-family:var(--font-mono)}
+
+/* Legend Card */
+.legend-card{margin-top:20px}
+.legend-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--radius-sm);margin-bottom:8px}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.legend-info{flex:1}
+.legend-info .li-title{font-size:13px;font-weight:600}
+.legend-info .li-range{font-family:var(--font-mono);font-size:11px;color:var(--muted)}
+.legend-info .li-desc{font-size:11px;color:var(--muted)}
+
+/* Chart Card */
+.chart-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:12px}
+.chart-subtitle{font-size:13px;color:var(--muted);margin-top:2px}
+.toggle-group{display:flex;gap:2px;background:var(--green-50);border:1px solid var(--green-200);border-radius:var(--radius-sm);padding:3px}
+.toggle-btn{padding:6px 12px;border:none;border-radius:5px;font-family:var(--font-body);font-size:12px;font-weight:500;cursor:pointer;background:transparent;color:var(--muted);transition:all 0.15s}
+.toggle-btn.active{background:var(--card);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,0.08)}
+
+/* Stats Row */
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+.stat-chip{background:var(--green-50);border:1px solid var(--green-100);border-radius:var(--radius-sm);padding:10px;text-align:center}
+.stat-chip .stat-label{font-size:11px;color:var(--muted);margin-bottom:4px}
+.stat-chip .stat-val{font-family:var(--font-mono);font-size:15px;font-weight:500}
+
+/* Chart Legend */
+.chart-legend{display:flex;align-items:center;gap:20px;margin-top:14px;flex-wrap:wrap;justify-content:center}
+.cl-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.cl-line{width:24px;height:2px;border-radius:1px}
+.data-source{display:flex;justify-content:flex-end;margin-top:10px}
+.source-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;background:var(--earth-50);border:1px solid var(--earth-100);border-radius:20px;font-size:11px;color:var(--earth-400)}
+
+/* Sensor Panel */
+.sensor-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px}
+.mock-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:var(--earth-50);border:1px solid var(--earth-100);border-radius:20px;font-size:12px;color:var(--earth-400);font-weight:500}
+.sensors-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.sensor-card{background:var(--green-50);border:1px solid var(--green-100);border-radius:var(--radius-sm);padding:14px}
+.sensor-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
+.sensor-id{font-family:var(--font-mono);font-size:10px;color:var(--muted)}
+.sensor-name{font-size:13px;font-weight:600;color:var(--text);margin-top:2px}
+.battery{font-family:var(--font-mono);font-size:12px}
+.moisture-row{margin-bottom:10px}
+.moisture-labels{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.moisture-key{font-size:11px;color:var(--muted)}
+.moisture-val{font-family:var(--font-mono);font-size:13px;font-weight:500}
+.moisture-track{height:7px;background:var(--green-100);border-radius:4px;overflow:hidden}
+.moisture-fill{height:100%;border-radius:4px;transition:width 0.6s}
+.temp-row{display:flex;align-items:center;justify-content:space-between}
+.temp-key{font-size:11px;color:var(--muted)}
+.temp-val{font-family:var(--font-mono);font-size:12px;color:var(--text)}
+.iot-notice{display:flex;gap:12px;margin-top:16px;padding:14px;background:var(--blue-50);border:1px solid #bee3f8;border-radius:var(--radius-sm)}
+.iot-icon{font-size:18px;flex-shrink:0}
+.iot-title{font-size:13px;font-weight:600;color:var(--blue-700);margin-bottom:2px}
+.iot-desc{font-size:12px;color:var(--muted);line-height:1.5}
+
+/* Info Cards */
+.info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.info-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+.info-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.info-icon{font-size:22px}
+.info-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;border:1px solid}
+.info-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px}
+.info-desc{font-size:12px;color:var(--muted);line-height:1.6}
+
+/* Footer */
+footer{border-top:1px solid var(--border);padding:24px;margin-top:8px}
+.footer-inner{max-width:1280px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.footer-brand{display:flex;align-items:center;gap:8px}
+.footer-logo{width:24px;height:24px;border-radius:6px;background:var(--green-600);display:flex;align-items:center;justify-content:center;font-size:13px}
+.footer-name{font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--text)}
+.footer-ver{font-size:11px;color:var(--muted);font-family:var(--font-mono)}
+.footer-center{font-size:12px;color:var(--muted);text-align:center}
+.footer-stack{font-size:12px;color:var(--muted)}
+
+/* Animations */
+.fade-in{animation:fadeIn 0.5s ease both}
+.slide-up{animation:slideUp 0.5s ease both}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.d1{animation-delay:0.05s}.d2{animation-delay:0.1s}.d3{animation-delay:0.15s}.d4{animation-delay:0.2s}.d5{animation-delay:0.25s}
+
+/* Loading state */
+.skeleton{background:linear-gradient(90deg,var(--green-100) 25%,var(--green-50) 50%,var(--green-100) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:6px}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+
+@media(max-width:640px){
+  main{padding:20px 16px}
+  .hero h1{font-size:28px}
+  .header-inner{padding:0 16px}
+  .stats-row{grid-template-columns:1fr 1fr 1fr}
+  .status-label{display:none}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M12 2C12 2 4 9.5 4 14.5C4 18.6 7.6 22 12 22C16.4 22 20 18.6 20 14.5C20 9.5 12 2 12 2Z" fill="white" fill-opacity="0.95"/>
+          <path d="M8.5 16C8.5 16 9.5 19 12 19" stroke="#1c421c" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <h1>AguaClara</h1>
+        <p>Monitoreo Satelital de Cultivos</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        <span class="status-label">Sistema activo</span>
+      </div>
+      <button class="btn-refresh" onclick="refreshData()" id="refreshBtn">
+        <svg id="refreshIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        <span id="refreshLabel">Actualizar</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- Hero -->
+  <div class="hero fade-in">
+    <div>
+      <h1>Panel de Control</h1>
+      <p>Monitoreo satelital · <span id="heroLocation">Valle del Yaqui, Sonora</span></p>
+    </div>
+    <div class="season-badge">
+      <div class="icon">☀️</div>
+      <div>
+        <div class="label">Temporada</div>
+        <div class="value">Primavera–Verano 2025</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Field Selector -->
+  <div class="card slide-up d1">
+    <div class="section-label">Seleccionar Parcela</div>
+    <div class="section-title">Mis Campos</div>
+    <div class="fields-grid" id="fieldsGrid"></div>
+    <div style="margin-top:10px;display:flex;align-items:center;gap:6px">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="var(--muted)"><path d="M8 0C5.2 0 3 2.2 3 5c0 3.9 5 11 5 11s5-7.1 5-11c0-2.8-2.2-5-5-5zm0 7c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+      <span style="font-size:12px;color:var(--muted);font-family:var(--font-mono)" id="coordsDisplay">27.48°N, -109.94°O</span>
+    </div>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="main-grid">
+
+    <!-- Left: Status + Legend -->
+    <div>
+      <!-- Status Card -->
+      <div class="card slide-up d2" id="statusCard">
+        <div class="status-header">
+          <div>
+            <div class="section-label">Estado Actual</div>
+            <div class="section-title">Salud del Cultivo</div>
+          </div>
+          <div class="status-icon" id="statusIcon">🌿</div>
+        </div>
+        <div class="classification-row">
+          <span class="class-dot" id="classDot"></span>
+          <span class="class-badge" id="classBadge">–</span>
+          <span class="confidence" id="confText">–</span>
+        </div>
+        <div class="ndvi-bar-wrap">
+          <div class="ndvi-bar-labels">
+            <span>-0.2</span>
+            <span class="center" id="ndviBarLabel">NDVI: –</span>
+            <span>1.0</span>
+          </div>
+          <div class="ndvi-track">
+            <div class="ndvi-fill" id="ndviFill" style="width:0%"></div>
+          </div>
+          <div class="ndvi-markers">
+            <div class="ndvi-marker" style="left:41.6%"></div>
+            <div class="ndvi-marker" style="left:66.7%"></div>
+          </div>
+        </div>
+        <div class="value-chips">
+          <div class="chip">
+            <div class="chip-label">NDVI</div>
+            <div class="chip-val" id="ndviVal" style="color:var(--green-600)">–</div>
+          </div>
+          <div class="chip">
+            <div class="chip-label">NDWI</div>
+            <div class="chip-val" id="ndwiVal" style="color:var(--blue-700)">–</div>
+          </div>
+        </div>
+        <div class="rec-box">
+          <div class="rec-label">Recomendación</div>
+          <div class="rec-text" id="recText">Cargando recomendación…</div>
+        </div>
+        <div class="obs-date" id="obsDate">–</div>
+      </div>
+
+      <!-- Legend Card -->
+      <div class="card legend-card slide-up d3">
+        <div class="section-label" style="margin-bottom:12px">Guía de Interpretación</div>
+        <div class="legend-item" style="background:var(--green-50);border:1px solid var(--green-100)">
+          <div class="legend-dot" style="background:#22c55e"></div>
+          <div class="legend-info">
+            <div class="li-title" style="color:#15803d">Saludable</div>
+            <div class="li-range">NDVI &gt; 0.6</div>
+            <div class="li-desc">Vegetación densa y activa</div>
+          </div>
+        </div>
+        <div class="legend-item" style="background:var(--amber-50);border:1px solid var(--amber-100)">
+          <div class="legend-dot" style="background:#f59e0b"></div>
+          <div class="legend-info">
+            <div class="li-title" style="color:#b45309">Estresado</div>
+            <div class="li-range">0.3 – 0.6</div>
+            <div class="li-desc">Posible déficit hídrico</div>
+          </div>
+        </div>
+        <div class="legend-item" style="background:var(--red-50);border:1px solid var(--red-100)">
+          <div class="legend-dot" style="background:#ef4444"></div>
+          <div class="legend-info">
+            <div class="li-title" style="color:#b91c1c">Crítico</div>
+            <div class="li-range">NDVI &lt; 0.3</div>
+            <div class="li-desc">Estrés severo detectado</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Chart -->
+    <div class="card slide-up d3">
+      <div class="chart-header">
+        <div>
+          <div class="section-label">Historial</div>
+          <div class="section-title">Serie Temporal NDVI / NDWI</div>
+          <div class="chart-subtitle" id="chartSubtitle">Cargando observaciones…</div>
+        </div>
+        <div class="toggle-group">
+          <button class="toggle-btn active" onclick="setChartMode('both')" id="tb-both">Ambos</button>
+          <button class="toggle-btn" onclick="setChartMode('ndvi')" id="tb-ndvi">NDVI</button>
+          <button class="toggle-btn" onclick="setChartMode('ndwi')" id="tb-ndwi">NDWI</button>
+        </div>
+      </div>
+
+      <div class="stats-row" id="statsRow">
+        <div class="stat-chip"><div class="stat-label">Mínimo NDVI</div><div class="stat-val skeleton" style="height:20px;width:60px;margin:0 auto">‌</div></div>
+        <div class="stat-chip"><div class="stat-label">Promedio NDVI</div><div class="stat-val skeleton" style="height:20px;width:60px;margin:0 auto">‌</div></div>
+        <div class="stat-chip"><div class="stat-label">Máximo NDVI</div><div class="stat-val skeleton" style="height:20px;width:60px;margin:0 auto">‌</div></div>
+      </div>
+
+      <div style="position:relative;width:100%;height:300px">
+        <canvas id="ndviChart"></canvas>
+      </div>
+
+      <div class="chart-legend">
+        <div class="cl-item"><div class="cl-line" style="background:#2d7d2d;height:2.5px"></div>NDVI (vegetación)</div>
+        <div class="cl-item"><div class="cl-line" style="background:#3b82f6;border-top:2px dashed #3b82f6;height:0"></div>NDWI (humedad)</div>
+        <div class="cl-item"><div class="cl-line" style="background:#22c55e;border-top:1.5px dashed #22c55e;height:0"></div>Umbrales</div>
+      </div>
+      <div class="data-source">
+        <span class="source-badge">
+          <span style="width:6px;height:6px;border-radius:50%;background:var(--earth-400);display:inline-block"></span>
+          Simulación satelital
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sensor Panel -->
+  <div class="card slide-up d4">
+    <div class="sensor-header">
+      <div>
+        <div class="section-label">Sensores en Campo</div>
+        <div class="section-title">Humedad del Suelo (IoT)</div>
+      </div>
+      <span class="mock-badge">⚡ Datos simulados</span>
+    </div>
+    <div class="sensors-grid" id="sensorsGrid"></div>
+    <div class="iot-notice">
+      <div class="iot-icon">🔌</div>
+      <div>
+        <div class="iot-title">Integración IoT en desarrollo</div>
+        <div class="iot-desc">Próximamente: sensores Arduino con módulo WiFi enviando datos en tiempo real vía MQTT. Los datos actuales son simulados para demostración.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Info Cards -->
+  <div class="info-grid slide-up d5">
+    <div class="info-card">
+      <div class="info-top">
+        <span class="info-icon">🛰️</span>
+        <span class="info-badge" style="background:var(--earth-50);color:var(--earth-400);border-color:var(--earth-100)">Mock</span>
+      </div>
+      <div class="info-title">Fuente de Datos</div>
+      <div class="info-desc">Simulación de imágenes Sentinel-2. Integración con Google Earth Engine planificada para datos reales.</div>
+    </div>
+    <div class="info-card">
+      <div class="info-top">
+        <span class="info-icon">📐</span>
+        <span class="info-badge" style="background:var(--blue-50);color:var(--blue-700);border-color:#bee3f8">FAO</span>
+      </div>
+      <div class="info-title">Metodología NDVI</div>
+      <div class="info-desc">NDVI = (NIR − Red) / (NIR + Red). Estándar FAO para monitoreo de estrés hídrico en cultivos.</div>
+    </div>
+    <div class="info-card">
+      <div class="info-top">
+        <span class="info-icon">🔄</span>
+        <span class="info-badge" style="background:var(--green-50);color:var(--green-700);border-color:var(--green-200)">Semanal</span>
+      </div>
+      <div class="info-title">Frecuencia de Datos</div>
+      <div class="info-desc">Observaciones cada 7 días. Sentinel-2 provee cobertura real cada 5 días sobre México.</div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <div class="footer-logo">🌿</div>
+      <span class="footer-name">AguaClara</span>
+      <span class="footer-ver">v1.0.0</span>
+    </div>
+    <div class="footer-center">Sistema de Apoyo a Decisiones para Agricultura Eficiente en Agua · Sonora, México</div>
+    <div class="footer-stack">FastAPI · Next.js · Sentinel-2</div>
+  </div>
+</footer>
+
+<script>
+// ── Data & Config ─────────────────────────────────────────────────────────────
+
+const FIELDS = [
+  { id:'yaqui-n', name:'Parcela Norte', loc:'Valle del Yaqui, Son.', lat:27.48, lon:-109.94, crop:'Trigo', icon:'🌾', area:'45 ha', baseSeed:1 },
+  { id:'yaqui-s', name:'Parcela Sur',   loc:'Valle del Yaqui, Son.', lat:27.38, lon:-109.88, crop:'Maíz',  icon:'🌽', area:'62 ha', baseSeed:2 },
+  { id:'hmo',     name:'Campo Hermosillo', loc:'Costa de Hermosillo', lat:29.10, lon:-110.95, crop:'Uva',   icon:'🍇', area:'28 ha', baseSeed:3 },
+  { id:'caborca', name:'Parcela Caborca',  loc:'Altar, Sonora',       lat:30.72, lon:-112.16, crop:'Espárragos', icon:'🥦', area:'35 ha', baseSeed:4 }
+];
+
+const RECS = {
+  Saludable:'Condiciones óptimas. Continúe el monitoreo regular. Revise la programación de riego para mantener la eficiencia hídrica.',
+  Estresado:'Estrés hídrico detectado. Se recomienda aumentar la frecuencia de riego en un 20-30%. Verifique fugas en el sistema de riego.',
+  Crítico:'Estado crítico. Aplique riego de emergencia inmediatamente. Consulte con un agrónomo. Revise posibles plagas o deficiencias nutricionales.'
+};
+
+const SENSORS = [
+  { id:'arduino-yaqui-01', name:'Parcela Norte — Trigo' },
+  { id:'arduino-yaqui-02', name:'Parcela Sur — Maíz' },
+  { id:'arduino-hmo-01',   name:'Invernadero Hermosillo' }
+];
+
+let currentField = FIELDS[0];
+let chartMode = 'both';
+let ndviChartInstance = null;
+let lastSeries = [];
+
+// ── Seeded RNG ────────────────────────────────────────────────────────────────
+
+function seededRand(seed) {
+  let s = seed;
+  return function() {
+    s = (s * 1664525 + 1013904223) & 0xffffffff;
+    return (s >>> 0) / 4294967296;
+  };
+}
+
+// ── Satellite Simulation ──────────────────────────────────────────────────────
+
+function calcNDVI(nir, red) {
+  const d = nir + red;
+  return d === 0 ? 0 : (nir - red) / d;
+}
+
+function calcNDWI(green, nir) {
+  const d = green + nir;
+  return d === 0 ? 0 : (green - nir) / d;
+}
+
+function generateSeries(field) {
+  const series = [];
+  const today = new Date();
+  const start = new Date(today);
+  start.setDate(today.getDate() - 180);
+  const totalDays = 180;
+  let current = new Date(start);
+  let dayIdx = 0;
+
+  while (current <= today) {
+    const rng = seededRand(field.baseSeed * 1000 + dayIdx);
+    const phase = Math.sin(Math.PI * (dayIdx / totalDays));
+    const latFactor = 1.0 - Math.abs(field.lat - 28.0) * 0.005;
+
+    const noise = () => (rng() - 0.5) * 0.06;
+    let nir   = Math.max(0.01, Math.min(0.99, 0.45 + 0.15 * phase * latFactor + noise()));
+    let red   = Math.max(0.01, Math.min(0.99, 0.12 - 0.09 * phase + noise() * 0.5));
+    let green = Math.max(0.01, Math.min(0.99, 0.18 + 0.045 * phase + noise() * 0.3));
+
+    const ndvi = Math.round(calcNDVI(nir, red) * 10000) / 10000;
+    const ndwi = Math.round(calcNDWI(green, nir) * 10000) / 10000;
+
+    series.push({
+      date: current.toISOString().split('T')[0],
+      ndvi, ndwi, nir: Math.round(nir*10000)/10000,
+      red: Math.round(red*10000)/10000,
+      green: Math.round(green*10000)/10000
+    });
+
+    current.setDate(current.getDate() + 7);
+    dayIdx += 7;
+  }
+  return series;
+}
+
+function classify(ndvi) {
+  if (ndvi > 0.6) return { label:'Saludable', color:'#22c55e', bg:'#f0fdf4', border:'#86efac', icon:'🌿', textColor:'#15803d' };
+  if (ndvi >= 0.3) return { label:'Estresado', color:'#f59e0b', bg:'#fffbeb', border:'#fcd34d', icon:'⚠️', textColor:'#b45309' };
+  return { label:'Crítico', color:'#ef4444', bg:'#fef2f2', border:'#fca5a5', icon:'🚨', textColor:'#b91c1c' };
+}
+
+// ── Render Field Buttons ──────────────────────────────────────────────────────
+
+function renderFields() {
+  const grid = document.getElementById('fieldsGrid');
+  grid.innerHTML = FIELDS.map(f => `
+    <button class="field-btn${f.id===currentField.id?' active':''}" onclick="selectField('${f.id}')">
+      <span class="crop-icon">${f.icon}</span>
+      <span class="field-name">${f.name}</span>
+      <span class="field-loc">${f.loc}</span>
+      <div class="field-tags">
+        <span class="tag">${f.crop}</span>
+        <span class="tag">${f.area}</span>
+      </div>
+      <div class="field-check">
+        <svg viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+      </div>
+    </button>
+  `).join('');
+}
+
+function selectField(id) {
+  currentField = FIELDS.find(f => f.id === id);
+  document.getElementById('heroLocation').textContent = currentField.loc;
+  document.getElementById('coordsDisplay').textContent = `${currentField.lat}°N, ${currentField.lon}°O`;
+  renderFields();
+  refreshData();
+}
+
+// ── Render Status Card ────────────────────────────────────────────────────────
+
+function updateStatus(series) {
+  const latest = series[series.length - 1];
+  const cls = classify(latest.ndvi);
+  const confidence = latest.ndvi > 0.6
+    ? Math.min(1, (latest.ndvi - 0.6) / 0.4 + 0.7)
+    : latest.ndvi >= 0.3
+    ? 0.65 + Math.abs((latest.ndvi - 0.45) / 0.15) * 0.2
+    : Math.min(1, (0.3 - latest.ndvi) / 0.3 + 0.7);
+
+  document.getElementById('statusIcon').textContent = cls.icon;
+  document.getElementById('classDot').style.background = cls.color;
+  const badge = document.getElementById('classBadge');
+  badge.textContent = cls.label;
+  badge.style.background = cls.bg;
+  badge.style.borderColor = cls.border;
+  badge.style.color = cls.textColor;
+  document.getElementById('confText').textContent = `${Math.round(confidence*100)}% confianza`;
+
+  const pct = Math.max(0, Math.min(100, ((latest.ndvi + 0.2) / 1.2) * 100));
+  document.getElementById('ndviFill').style.width = pct + '%';
+  document.getElementById('ndviFill').style.background = cls.color;
+  document.getElementById('ndviBarLabel').textContent = `NDVI: ${latest.ndvi.toFixed(3)}`;
+  document.getElementById('ndviVal').textContent = latest.ndvi.toFixed(4);
+  document.getElementById('ndviVal').style.color = cls.textColor;
+  document.getElementById('ndwiVal').textContent = latest.ndwi.toFixed(4);
+  document.getElementById('ndwiVal').style.color = latest.ndwi > 0 ? '#1d4ed8' : '#b45309';
+  document.getElementById('recText').textContent = RECS[cls.label];
+  document.getElementById('obsDate').textContent = `Observación: ${formatDate(latest.date)}`;
+}
+
+// ── Render Stats ──────────────────────────────────────────────────────────────
+
+function updateStats(series) {
+  const vals = series.map(p => p.ndvi);
+  const min = Math.min(...vals);
+  const max = Math.max(...vals);
+  const avg = vals.reduce((a,b) => a+b, 0) / vals.length;
+  const row = document.getElementById('statsRow');
+  row.innerHTML = [
+    { label:'Mínimo NDVI', val: min.toFixed(3), color:'#b91c1c' },
+    { label:'Promedio NDVI', val: avg.toFixed(3), color:'var(--text)' },
+    { label:'Máximo NDVI', val: max.toFixed(3), color:'#15803d' }
+  ].map(s => `
+    <div class="stat-chip">
+      <div class="stat-label">${s.label}</div>
+      <div class="stat-val" style="color:${s.color}">${s.val}</div>
+    </div>
+  `).join('');
+  document.getElementById('chartSubtitle').textContent =
+    `${series.length} observaciones · ${series[0].date} → ${series[series.length-1].date}`;
+}
+
+// ── Chart ─────────────────────────────────────────────────────────────────────
+
+function renderChart(series) {
+  if (ndviChartInstance) { ndviChartInstance.destroy(); ndviChartInstance = null; }
+  const ctx = document.getElementById('ndviChart').getContext('2d');
+  const labels = series.map(p => p.date);
+  const ndviData = series.map(p => p.ndvi);
+  const ndwiData = series.map(p => p.ndwi);
+
+  const showNDVI = chartMode === 'both' || chartMode === 'ndvi';
+  const showNDWI = chartMode === 'both' || chartMode === 'ndwi';
+
+  const datasets = [];
+  if (showNDVI) datasets.push({
+    label: 'NDVI',
+    data: ndviData,
+    borderColor: '#2d7d2d',
+    backgroundColor: ctx => {
+      const g = ctx.chart.ctx.createLinearGradient(0,0,0,260);
+      g.addColorStop(0,'rgba(45,125,45,0.25)');
+      g.addColorStop(1,'rgba(45,125,45,0.01)');
+      return g;
+    },
+    borderWidth: 2.5,
+    fill: true,
+    tension: 0.4,
+    pointRadius: 0,
+    pointHoverRadius: 5,
+    pointHoverBackgroundColor: '#2d7d2d',
+    pointHoverBorderColor: '#fff',
+    pointHoverBorderWidth: 2
+  });
+  if (showNDWI) datasets.push({
+    label: 'NDWI',
+    data: ndwiData,
+    borderColor: '#3b82f6',
+    backgroundColor: ctx => {
+      const g = ctx.chart.ctx.createLinearGradient(0,0,0,260);
+      g.addColorStop(0,'rgba(59,130,246,0.15)');
+      g.addColorStop(1,'rgba(59,130,246,0.01)');
+      return g;
+    },
+    borderWidth: 2,
+    borderDash: [5, 3],
+    fill: true,
+    tension: 0.4,
+    pointRadius: 0,
+    pointHoverRadius: 4,
+    pointHoverBackgroundColor: '#3b82f6',
+    pointHoverBorderColor: '#fff',
+    pointHoverBorderWidth: 2
+  });
+
+  ndviChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode:'index', intersect:false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#fff',
+          titleColor: '#5a8a5a',
+          bodyColor: '#1c421c',
+          borderColor: '#d4e8d4',
+          borderWidth: 1,
+          padding: 12,
+          titleFont: { family:'Outfit', size:11 },
+          bodyFont: { family:'JetBrains Mono', size:13 },
+          callbacks: {
+            title: items => formatDate(items[0].label),
+            label: item => {
+              const v = item.raw;
+              const suffix = item.dataset.label === 'NDVI'
+                ? ` → ${v>0.6?'Saludable':v>=0.3?'Estresado':'Crítico'}`
+                : '';
+              return ` ${item.dataset.label}: ${v.toFixed(4)}${suffix}`;
+            }
+          }
+        },
+        annotation: {}
+      },
+      scales: {
+        x: {
+          grid: { display:false },
+          border: { display:false },
+          ticks: {
+            font: { family:'Outfit', size:11 },
+            color: '#5a8a5a',
+            maxTicksLimit: 8,
+            callback: (val, i) => {
+              const d = labels[i];
+              if (!d) return '';
+              const dt = new Date(d + 'T00:00:00');
+              return dt.toLocaleDateString('es-MX', { month:'short', day:'numeric' });
+            }
+          }
+        },
+        y: {
+          min: -0.2, max: 1.0,
+          grid: { color:'rgba(212,232,212,0.5)', drawBorder:false },
+          border: { display:false },
+          ticks: {
+            font: { family:'JetBrains Mono', size:10 },
+            color: '#5a8a5a',
+            stepSize: 0.2,
+            callback: v => v.toFixed(1)
+          }
+        }
+      },
+      // Reference lines via custom plugin
+    },
+    plugins: [{
+      id: 'thresholds',
+      afterDraw(chart) {
+        const { ctx: c, chartArea: { left, right, top, bottom }, scales: { y } } = chart;
+        [[0.6,'#22c55e','Saludable'],[0.3,'#f59e0b','Estresado']].forEach(([val, color, label]) => {
+          const yPx = y.getPixelForValue(val);
+          c.save();
+          c.setLineDash([5,4]);
+          c.strokeStyle = color;
+          c.lineWidth = 1.5;
+          c.globalAlpha = 0.7;
+          c.beginPath();
+          c.moveTo(left, yPx);
+          c.lineTo(right, yPx);
+          c.stroke();
+          c.restore();
+          c.save();
+          c.font = '10px Outfit';
+          c.fillStyle = color;
+          c.globalAlpha = 0.9;
+          c.fillText(label, right - 60, yPx - 4);
+          c.restore();
+        });
+      }
+    }]
+  });
+}
+
+// ── Sensors ───────────────────────────────────────────────────────────────────
+
+function renderSensors() {
+  const rng = seededRand(Date.now() % 997);
+  const html = SENSORS.map(s => {
+    const moist = Math.round((38 + rng() * 44) * 10) / 10;
+    const temp  = Math.round((18 + rng() * 12) * 10) / 10;
+    const bat   = Math.round(40 + rng() * 58);
+    const moistColor = moist>=60?'#22c55e':moist>=35?'#f59e0b':'#ef4444';
+    const moistLabel = moist>=60?'Óptimo':moist>=35?'Bajo':'Crítico';
+    const batEmoji = bat>=60?'🔋':bat>=30?'🪫':'🔴';
+    return `
+      <div class="sensor-card">
+        <div class="sensor-top">
+          <div>
+            <div class="sensor-id">${s.id}</div>
+            <div class="sensor-name">${s.name}</div>
+          </div>
+          <div class="battery" style="color:${bat>=60?'#15803d':bat>=30?'#b45309':'#b91c1c'}">${batEmoji} ${bat}%</div>
+        </div>
+        <div class="moisture-row">
+          <div class="moisture-labels">
+            <span class="moisture-key">Humedad del suelo</span>
+            <span class="moisture-val" style="color:${moistColor}">${moist}% — ${moistLabel}</span>
+          </div>
+          <div class="moisture-track">
+            <div class="moisture-fill" style="width:${moist}%;background:${moistColor}"></div>
+          </div>
+        </div>
+        <div class="temp-row">
+          <span class="temp-key">🌡️ Temperatura</span>
+          <span class="temp-val">${temp}°C</span>
+        </div>
+      </div>`;
+  }).join('');
+  document.getElementById('sensorsGrid').innerHTML = html;
+}
+
+// ── Chart Mode Toggle ─────────────────────────────────────────────────────────
+
+function setChartMode(mode) {
+  chartMode = mode;
+  ['both','ndvi','ndwi'].forEach(m => {
+    document.getElementById('tb-'+m).classList.toggle('active', m===mode);
+  });
+  if (lastSeries.length) renderChart(lastSeries);
+}
+
+// ── Refresh ───────────────────────────────────────────────────────────────────
+
+function refreshData() {
+  const btn = document.getElementById('refreshBtn');
+  const icon = document.getElementById('refreshIcon');
+  const lbl = document.getElementById('refreshLabel');
+  btn.disabled = true;
+  icon.classList.add('spinning');
+  lbl.textContent = 'Cargando…';
+
+  setTimeout(() => {
+    lastSeries = generateSeries(currentField);
+    updateStatus(lastSeries);
+    updateStats(lastSeries);
+    renderChart(lastSeries);
+    renderSensors();
+    btn.disabled = false;
+    icon.classList.remove('spinning');
+    lbl.textContent = 'Actualizar';
+  }, 600);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function formatDate(iso) {
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('es-MX', { day:'numeric', month:'long', year:'numeric' });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+renderFields();
+refreshData();
+</script>
+</body>
+</html>

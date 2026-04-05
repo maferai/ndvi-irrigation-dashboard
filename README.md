@@ -29,4 +29,4 @@ The dashboard uses deterministic simulation based on geographic coordinates to g
 
 Enable GitHub Pages and open:
 
-(link)
+https://maferai.github.io/ndvi-irrigation-dashboard/

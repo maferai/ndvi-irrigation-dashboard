@@ -1,4 +1,4 @@
-# Aguaclara Dashboard
+# Dashboard
 
 Interactive web dashboard for monitoring crop health and irrigation conditions in Sonora, Mexico.
 

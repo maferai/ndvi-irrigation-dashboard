@@ -30,7 +30,3 @@ The dashboard uses deterministic simulation based on geographic coordinates to g
 Enable GitHub Pages and open:
 
 (link)
-
-## Context
-
-This project simulates precision agriculture tools for the Sonora region, helping visualize crop conditions and irrigation needs.
